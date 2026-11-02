@@ -191,10 +191,14 @@ def load_config(path: str) -> dict:
 
 
 def check_tokenizer_path(cfg: dict) -> None:
-    """预检 tokenizer_path：不存在时提前报错，避免 modelscope 退化成远程下载 404。"""
+    """预检 tokenizer_path：不存在时提前报错，避免 modelscope 退化成远程下载 404。
+    空值也拦截——数据集生成/文件名/evalscope --tokenizer-path 都需要它。"""
     tok = cfg.get("service", {}).get("tokenizer_path", "")
     if not tok:
-        return
+        raise FileNotFoundError(
+            "service.tokenizer_path 未配置。请在「配置项」页填写本机可用的 "
+            "tokenizer 目录（含 tokenizer_config.json），或通过环境变量设置。"
+        )
     if os.path.isdir(tok):
         return
     # 常见误用：推理集群路径在压测机上不存在
