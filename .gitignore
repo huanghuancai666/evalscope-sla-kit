@@ -30,3 +30,10 @@ web_state.json
 
 # AgentX/HF 本地缓存
 .cache/
+
+# 可移植化部署产物（bootstrap_swe_pro.sh / setup.sh 生成, 勿提交）
+# （.cache/ 与 results/ 已在上方忽略; 这里补 bootstrap 特有的）
+dockersock/
+
+# data_picker.py 运行时状态（已挑过的 id 清单, 运行时追加）
+tools/picked_ids.txt

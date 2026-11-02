@@ -5,11 +5,18 @@
 #   3. evalscope adapter patch  (gold test patch must reach the container)
 #
 # Every step is idempotent: this is safe to re-run before each evaluation.
+#
+# 路径解析与 kit_paths.py 同口径: 环境变量优先（SWE_CONTAINER/SWE_VENV/
+# SWE_REPO_PATH/SWE_RESULTS/RELAY_SOCK/TOOLS）, 默认 kit 相对布局——
+# 工作区 results/swe_pro, evalscope venv .cache/swe-venv, OS 仓库 .cache/。
 set -u
-TOOLS=/mnt/sfs_turbo/c00803992/tools
-RELAY_SOCK=/mnt/sfs_turbo/c00803992/dockersock/docker.sock
-CONTAINER=ais-bench
-VENV=/tmp/bench-venv
+KIT="$(cd "$(dirname "$0")/.." && pwd)"
+TOOLS="${TOOLS:-$KIT/tools}"
+CONTAINER="${SWE_CONTAINER:-ais-bench}"
+VENV="${SWE_VENV:-$KIT/.cache/swe-venv}"
+RELAY_SOCK="${RELAY_SOCK:-${SWE_RELAY_SOCKET:-$KIT/dockersock/docker.sock}}"
+OS_REPO="${SWE_REPO_PATH:-$KIT/.cache/swe_bench_pro_os/repo}"
+SWE_RESULTS="${SWE_RESULTS:-$KIT/results/swe_pro/results/accuracy/swe_bench_pro}"
 
 echo "== 1. docker unix relay =="
 if pgrep -f "docker_unix_relay[.]py" > /dev/null; then
@@ -36,15 +43,15 @@ if [ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER")" != "true" ]; then
 fi
 docker cp "$TOOLS/patch_swe_bench_pro_tests.py" "$CONTAINER:$VENV/patch_swe_bench_pro_tests.py"
 docker exec "$CONTAINER" bash -c \
-    "$VENV/bin/python $VENV/patch_swe_bench_pro_tests.py $VENV/lib/python3.12/site-packages/evalscope/benchmarks/swe_bench_pro/utils.py"
+    "SP=\$(ls -d $VENV/lib/python3*/site-packages | head -1); \
+     $VENV/bin/python $VENV/patch_swe_bench_pro_tests.py \$SP/evalscope/benchmarks/swe_bench_pro/utils.py"
 docker cp "$TOOLS/patch_evalscope_instance_filter.py" "$CONTAINER:/tmp/patch_evalscope_instance_filter.py"
 docker exec "$CONTAINER" bash -c \
-    "$VENV/bin/python /tmp/patch_evalscope_instance_filter.py $VENV/lib/python3.12/site-packages/evalscope/api/dataset/loader.py"
+    "SP=\$(ls -d $VENV/lib/python3*/site-packages | head -1); \
+     $VENV/bin/python /tmp/patch_evalscope_instance_filter.py \$SP/evalscope/api/dataset/loader.py"
 
 echo "== 4. run_script worker cap (qemu OOM) + module aliases =="
-python3 "$TOOLS/patch_swe_bench_pro_workers.py" /mnt/sfs_turbo/c00803992/swe_bench_pro_os/repo \
-    /mnt/sfs_turbo/c00803992/swe_pro/results/accuracy/swe_bench_pro_dsv4 || true
-python3 "$TOOLS/patch_swe_bench_pro_jest.py" /mnt/sfs_turbo/c00803992/swe_bench_pro_os/repo \
-    /mnt/sfs_turbo/c00803992/swe_pro/results/accuracy/swe_bench_pro_dsv4 || true
+python3 "$TOOLS/patch_swe_bench_pro_workers.py" "$OS_REPO" "$SWE_RESULTS" || true
+python3 "$TOOLS/patch_swe_bench_pro_jest.py" "$OS_REPO" "$SWE_RESULTS" || true
 
 echo "== ready =="

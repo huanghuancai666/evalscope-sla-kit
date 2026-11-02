@@ -120,7 +120,9 @@ if "$PY" swe_runner.py env-check; then
   echo "  SWE 环境就绪（bash run.sh --swe status 可监控评测）"
 else
   echo "警告: SWE 环境未就绪 —— SWE-bench_Pro 线不可用（其余测试线不受影响）"
-  echo "  完整准备（宿主机执行, 幂等）: bash tools/prepare_swe_bench_env.sh"
+  echo "  全新部署首次准备（宿主机执行, 幂等）: bash tools/bootstrap_swe_pro.sh"
+  echo "    （建 results/swe_pro 工作目录 + 克隆 SWE-bench_Pro-os 仓库 + .cache/swe-venv,"
+  echo "      末尾自动调 tools/prepare_swe_bench_env.sh 完成 relay/binfmt/补丁）"
 fi
 
 echo "== [4/4] 验证 =="
@@ -142,5 +144,5 @@ echo "  1. 编辑 config.yaml（url / model / tokenizer_path / 场景开关）"
 echo "  2. bash run.sh --dry-run   预检命令"
 echo "  3. bash run.sh             开始摸高（nohup 后台）"
 echo "  4. bash run.sh --bfcl      函数调用精度评测（可选线, bfcl-venv 就绪时可用）"
-echo "  5. bash run.sh --swe status  SWE-bench_Pro 评测监控（可选线, 需先跑"
-echo "     tools/prepare_swe_bench_env.sh 准备 relay/binfmt/venv 补丁）"
+echo "  5. bash run.sh --swe status  SWE-bench_Pro 评测监控（可选线）"
+echo "     全新部署先跑: bash tools/bootstrap_swe_pro.sh（一次性, 幂等）"

@@ -5,10 +5,10 @@
 #
 # 参考文档: https://evalscope.readthedocs.io/zh-cn/latest/benchmarks/swe_bench_pro.html
 #
-# 用法（宿主机）:
-#   bash /mnt/sfs_turbo/c00803992/tools/prepare_swe_bench_env.sh   # 幂等环境准备
-#   docker exec -d ais-bench bash -c "cd /mnt/sfs_turbo/c00803992/swe_pro \
-#     && bash run_swe_bench_pro.sh --limit 2"
+# 用法（宿主机; 路径默认从脚本自身位置推导: tools/ dockersock/ swe_bench_pro_os/
+# 是 swe_pro/ 的兄弟目录, 环境变量 DOCKER_HOST/REPO_PATH/WORK_DIR/VENV 可覆盖）:
+#   bash tools/prepare_swe_bench_env.sh    # 幂等环境准备
+#   docker exec -d ais-bench bash -c "cd swe_pro && bash run_swe_bench_pro.sh --limit 2"
 #   日志: logs/swe_bench_pro_run1.log
 #
 # 环境要点（2026-10-30 踩坑记录）:
@@ -29,17 +29,20 @@
 #     已由 tools/patch_swe_bench_pro_tests.py 修补（容器重建后需重打）。
 # ============================================================================
 set -eu
+# KIT 根 = 脚本位置上两级（脚本在 scripts/swe/ 或 results/swe_pro/ 都成立）,
+# 与 kit_paths.py 的默认布局（.cache/swe-venv, results/swe_pro）对齐
+KIT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$(dirname "$0")"
 mkdir -p logs results/accuracy
 
 # 机器相关路径全部从环境变量取（由 swe_runner / kit_paths.py 注入）
 export DOCKER_HOST="${DOCKER_HOST:-unix:///var/run/docker.sock}"
-export PATH="${SWE_VENV:-$(cd "$(dirname "$0")/.." && pwd)/.cache/swe-venv}/bin:$PATH"
+export PATH="${SWE_VENV:-$KIT/.cache/swe-venv}/bin:$PATH"
 
 API_URL="${API_URL:-}"
 MODEL="${MODEL:-}"
-REPO_PATH="${REPO_PATH:-}"
-WORK_DIR="${WORK_DIR:-$(cd "$(dirname "$0")/.." && pwd)/results/swe_pro/results/accuracy/swe_bench_pro}"
+REPO_PATH="${REPO_PATH:-$KIT/.cache/swe_bench_pro_os/repo}"
+WORK_DIR="${WORK_DIR:-$KIT/results/swe_pro/results/accuracy/swe_bench_pro}"
 
 if [ -z "$API_URL" ] || [ -z "$MODEL" ]; then
   echo "错误: API_URL 和 MODEL 必须由环境变量或 swe_runner 注入" >&2; exit 1
@@ -54,7 +57,7 @@ SANDBOX="${SANDBOX:-{\"enabled\":true,\"engine\":\"docker\",\"default_config\":{
 # the evalscope rerun-temp deletion eat the whole batch's review rows
 # (batch 134, 2026-10-31).  Capture the rc and keep going instead.
 set +e
-"${SWE_VENV:-$(cd "$(dirname "$0")/.." && pwd)/.cache/swe-venv}/bin/evalscope" eval \
+"${SWE_VENV:-$KIT/.cache/swe-venv}/bin/evalscope" eval \
   --model "$MODEL" --model-id "$MODEL" --eval-type openai_api \
   --api-url "$API_URL" \
   --api-key EMPTY \
@@ -74,7 +77,7 @@ set +e
   "$@"
 EVAL_RC=$?
 set -e
-SWE_LOGS_DIR="${SWE_LOGS_DIR:-$(cd "$(dirname "$0")/.." && pwd)/results/swe_pro/logs}"
+SWE_LOGS_DIR="${SWE_LOGS_DIR:-$KIT/results/swe_pro/logs}"
 mkdir -p "$SWE_LOGS_DIR" "$SWE_LOGS_DIR/../reviews_archive" || true
 echo "[eval] offset=${EVALSCOPE_DATASET_OFFSET:-0} rc=$EVAL_RC ended $(date +%H:%M:%S)" \
   >> "$SWE_LOGS_DIR/eval_rc.log" || true

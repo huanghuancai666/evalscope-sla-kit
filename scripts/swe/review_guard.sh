@@ -7,9 +7,11 @@
 # instead does os.replace(temp, base), clobbering the previous batch.  This
 # guard keeps a rolling copy of the temp file, so either ending is survivable.
 # It copies only on growth (cheap stat checks, 5s cadence).
-WORK=/mnt/sfs_turbo/c00803992/swe_pro/results/accuracy/swe_bench_pro_dsv4
-DEST=/mnt/sfs_turbo/c00803992/swe_pro/reviews_archive/live
-LOG=/mnt/sfs_turbo/c00803992/swe_pro/review_guard.log
+# 路径解析与 kit_paths.py 同口径: KIT 根 = 脚本上两级, 默认 kit 相对布局
+KIT="$(cd "$(dirname "$0")/../.." && pwd)"
+WORK="${REVIEW_GUARD_WORK:-$KIT/results/swe_pro/results/accuracy/swe_bench_pro}"
+DEST="${REVIEW_GUARD_DEST:-$KIT/results/swe_pro/reviews_archive/live}"
+LOG="${REVIEW_GUARD_LOG:-$KIT/results/swe_pro/review_guard.log}"
 mkdir -p "$DEST"
 declare -A last_size
 echo "$(date +%F\ %H:%M:%S) review_guard start" >> "$LOG"
